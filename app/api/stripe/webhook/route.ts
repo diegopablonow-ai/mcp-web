@@ -110,7 +110,7 @@ export async function POST(req: Request) {
           status: "active",
           stripeEventId: event.id,
         })
-        revalidateTag("billing")
+        revalidateTag("billing", "max")
         break
       }
 
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
           stripePriceId: planId,
           stripeEventId: event.id,
         })
-        revalidateTag("billing")
+        revalidateTag("billing", "max")
         break
       }
 
@@ -144,7 +144,7 @@ export async function POST(req: Request) {
           plan: "Starter",
           stripeEventId: event.id,
         })
-        revalidateTag("billing")
+        revalidateTag("billing", "max")
         break
       }
 
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
           status: "past_due",
           stripeEventId: event.id,
         })
-        revalidateTag("billing")
+        revalidateTag("billing", "max")
         break
       }
 
