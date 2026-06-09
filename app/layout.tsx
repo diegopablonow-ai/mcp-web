@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { cookies } from 'next/headers'
+import { Suspense } from 'react'
 import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
 import { AppShell } from '@/components/app-shell'
@@ -42,7 +43,25 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default async function RootLayout({
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="font-sans antialiased bg-background">
+        <Suspense fallback={null}>
+          <AuthenticatedShell>{children}</AuthenticatedShell>
+        </Suspense>
+        <Toaster richColors position="top-right" />
+        {process.env.NODE_ENV === 'production' && <Analytics />}
+      </body>
+    </html>
+  )
+}
+
+async function AuthenticatedShell({
   children,
 }: Readonly<{
   children: React.ReactNode
@@ -56,14 +75,8 @@ export default async function RootLayout({
   const initialAuthenticated = !!cookieStore.get('mcp.token')?.value
 
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="font-sans antialiased bg-background">
-        <AuthProvider initialAuthenticated={initialAuthenticated}>
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
-        <Toaster richColors position="top-right" />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
-      </body>
-    </html>
+    <AuthProvider initialAuthenticated={initialAuthenticated}>
+      <AppShell>{children}</AppShell>
+    </AuthProvider>
   )
 }
