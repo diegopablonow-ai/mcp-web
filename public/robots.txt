@@ -1,0 +1,3 @@
+# Authenticated SaaS — no public content to index.
+User-agent: *
+Disallow: /

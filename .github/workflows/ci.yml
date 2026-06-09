@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Lint, typecheck & build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+        env:
+          # Tests use in-memory backends; no real secrets needed.
+          NODE_ENV: test
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Dummy secrets satisfy startup env validation during CI build.
+          # Real secrets are configured in Vercel project settings — never
+          # commit real values here.
+          JWT_SECRET: ci_placeholder_secret_at_least_32_chars_long
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          STRIPE_PRICE_PRO: price_placeholder_pro
+          STRIPE_PRICE_SCALE: price_placeholder_scale
+          STRIPE_PRICE_QUOTA_UNIT: price_placeholder_quota
+          NEXT_PUBLIC_API_BASE_URL: https://api.mcp-builder.com
+          # Upstash: placeholder satisfies validateProductionInfra() during
+          # CI builds (NODE_ENV=production from `next build`). Real credentials
+          # go in Vercel project settings, not here.
+          UPSTASH_REDIS_REST_URL: https://ci-placeholder.upstash.io
+          UPSTASH_REDIS_REST_TOKEN: ci_placeholder_upstash_token
+          # Sentry: placeholder satisfies validateProductionInfra() during CI.
+          # Real DSN goes in Vercel project settings.
+          # SENTRY_AUTH_TOKEN is needed only for source-map uploads — add it as
+          # a GitHub repository secret (Settings → Secrets → Actions) if you
+          # want source maps uploaded from CI builds.
+          SENTRY_DSN: https://ci-placeholder@o0.ingest.sentry.io/0
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

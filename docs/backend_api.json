@@ -1,0 +1,314 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "MCP Builder Backend API",
+    "version": "1.1.0",
+    "description": "Complete API specification for MCP Builder backend, including authentication, teams, AI jobs, billing, servers, custom domains, and observability. v1.1.0 adds GET /ai/jobs, GET /ai/jobs/stream (SSE), DELETE /teams/{teamId}/members/{userId}, and PATCH /servers/{serverId}."
+  },
+  "servers": [
+    { "url": "https://api.mcp-builder.com" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "AuthTokens": {
+        "type": "object",
+        "required": ["token", "refreshToken"],
+        "properties": {
+          "token": { "type": "string" },
+          "refreshToken": { "type": "string" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "email", "role"],
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "name": { "type": "string" },
+          "role": { "type": "string", "enum": ["admin", "member"] },
+          "avatarUrl": { "type": "string" },
+          "aiQuotaUsed": { "type": "integer" },
+          "aiQuotaLimit": { "type": "integer" }
+        }
+      },
+      "TeamMember": {
+        "type": "object",
+        "required": ["id", "email", "role", "aiQuotaUsed", "aiQuotaLimit", "status", "joinedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "name": { "type": "string" },
+          "role": { "type": "string", "enum": ["admin", "member"] },
+          "aiQuotaUsed": { "type": "integer" },
+          "aiQuotaLimit": { "type": "integer" },
+          "status": { "type": "string", "enum": ["active", "invited"] },
+          "joinedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Team": {
+        "type": "object",
+        "required": ["id", "name", "members"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "members": { "type": "array", "items": { "$ref": "#/components/schemas/TeamMember" } },
+          "plan": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AIJob": {
+        "type": "object",
+        "required": ["jobId", "status", "createdAt"],
+        "properties": {
+          "jobId": { "type": "string" },
+          "status": { "type": "string", "enum": ["queued", "running", "succeeded", "failed"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "prompt": { "type": "string" },
+          "teamId": { "type": "string" },
+          "progress": { "type": "number", "minimum": 0, "maximum": 100 },
+          "durationMs": { "type": "integer" },
+          "output": { "type": "string" }
+        }
+      },
+      "Subscription": {
+        "type": "object",
+        "required": ["plan", "seats", "quota"],
+        "properties": {
+          "plan": { "type": "string" },
+          "seats": { "type": "integer" },
+          "quota": { "type": "integer" },
+          "seatsUsed": { "type": "integer" },
+          "quotaUsed": { "type": "integer" },
+          "renewsAt": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["active", "past_due", "canceled"] },
+          "amountCents": { "type": "integer" }
+        }
+      },
+      "CustomDomain": {
+        "type": "object",
+        "required": ["id", "domain", "serverId", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "domain": { "type": "string" },
+          "serverId": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "pending", "error"] }
+        }
+      },
+      "Server": {
+        "type": "object",
+        "required": ["id", "url"],
+        "properties": {
+          "id": { "type": "string" },
+          "url": { "type": "string" },
+          "customDomain": { "type": "string" },
+          "name": { "type": "string" },
+          "platformDomain": { "type": "string" },
+          "railwayUrl": { "type": "string" },
+          "status": { "type": "string", "enum": ["running", "stopped", "deploying", "error"] },
+          "region": { "type": "string" },
+          "lastDeployedAt": { "type": "string", "format": "date-time" },
+          "teamId": { "type": "string" }
+        }
+      },
+      "LogEntry": {
+        "type": "object",
+        "required": ["id", "timestamp", "level", "source", "message"],
+        "properties": {
+          "id": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "level": { "type": "string", "enum": ["info", "warn", "error", "debug"] },
+          "source": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  },
+  "security": [ { "bearerAuth": [] } ],
+  "paths": {
+    "/auth/signup": {
+      "post": {
+        "summary": "User signup",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string", "format": "email" }, "password": { "type": "string", "minLength": 8 } } } } }
+        },
+        "responses": { "200": { "description": "Auth tokens", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthTokens" } } } } }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "User login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string", "format": "email" }, "password": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Auth tokens", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthTokens" } } } }, "401": { "description": "Invalid credentials" } }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token using a refresh token",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["refreshToken"], "properties": { "refreshToken": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "New auth tokens", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthTokens" } } } }, "401": { "description": "Invalid or expired refresh token" } }
+      }
+    },
+    "/teams": {
+      "get": {
+        "summary": "List all teams the authenticated user belongs to",
+        "responses": { "200": { "description": "Array of teams", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Team" } } } } } }
+      }
+    },
+    "/teams/{teamId}": {
+      "get": {
+        "summary": "Get team by ID",
+        "parameters": [ { "name": "teamId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Team details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Team" } } } }, "404": { "description": "Team not found" } }
+      }
+    },
+    "/teams/{teamId}/add-user": {
+      "post": {
+        "summary": "Invite a user to a team",
+        "parameters": [ { "name": "teamId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email", "role"], "properties": { "email": { "type": "string", "format": "email" }, "role": { "type": "string", "enum": ["admin", "member"] } } } } }
+        },
+        "responses": { "200": { "description": "User invited", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TeamMember" } } } }, "404": { "description": "Team not found" } }
+      }
+    },
+    "/teams/{teamId}/members/{userId}": {
+      "delete": {
+        "summary": "Remove a member from a team",
+        "parameters": [
+          { "name": "teamId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "description": "Member removed" }, "403": { "description": "Forbidden — cannot remove the last admin" }, "404": { "description": "Team or member not found" } }
+      }
+    },
+    "/ai/jobs": {
+      "get": {
+        "summary": "List AI scaffolding jobs for the authenticated user",
+        "responses": { "200": { "description": "Array of jobs", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/AIJob" } } } } }
+        }
+      },
+      "post": {
+        "summary": "Submit a new AI scaffolding job",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["teamId", "prompt"], "properties": { "teamId": { "type": "string" }, "prompt": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Job queued", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AIJob" } } } } }
+      }
+    },
+    "/ai/jobs/stream": {
+      "get": {
+        "summary": "SSE stream of real-time AI job updates",
+        "description": "Emits `data: <JSON AIJob[]>` server-sent events whenever job state changes. The connection is authenticated via the Authorization Bearer header. Clients should reconnect on disconnect.",
+        "responses": {
+          "200": {
+            "description": "SSE stream",
+            "content": { "text/event-stream": { "schema": { "type": "string" } } }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/ai/jobs/{jobId}": {
+      "get": {
+        "summary": "Get AI job status by ID",
+        "parameters": [ { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Job details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AIJob" } } } }, "404": { "description": "Job not found" } }
+      }
+    },
+    "/billing": {
+      "get": {
+        "summary": "Get the authenticated user's subscription info",
+        "responses": { "200": { "description": "Subscription details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } } }
+      }
+    },
+    "/billing/by-customer/{customerId}": {
+      "patch": {
+        "summary": "Update billing state by Stripe customer ID (internal — called by webhook handler)",
+        "parameters": [ { "name": "customerId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "plan": { "type": "string" }, "stripePriceId": { "type": "string" }, "stripeEventId": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Updated" }, "404": { "description": "Customer not found" } }
+      }
+    },
+    "/users/{userId}/subscription": {
+      "patch": {
+        "summary": "Attach a Stripe subscription to a user (internal — called by webhook handler)",
+        "parameters": [ { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "stripeSubscriptionId": { "type": "string" }, "stripeCustomerId": { "type": "string" }, "status": { "type": "string" }, "stripeEventId": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Updated" }, "404": { "description": "User not found" } }
+      }
+    },
+    "/servers": {
+      "get": {
+        "summary": "List all servers for the authenticated user",
+        "responses": { "200": { "description": "Servers list", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Server" } } } } } }
+      }
+    },
+    "/servers/{serverId}": {
+      "get": {
+        "summary": "Get server by ID",
+        "parameters": [ { "name": "serverId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "200": { "description": "Server details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Server" } } } }, "404": { "description": "Server not found" } }
+      },
+      "patch": {
+        "summary": "Update server lifecycle status (start / stop / restart)",
+        "parameters": [ { "name": "serverId", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "properties": { "status": { "type": "string", "enum": ["running", "stopped", "deploying", "error"] } } } } }
+        },
+        "responses": { "200": { "description": "Updated server", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Server" } } } }, "404": { "description": "Server not found" } }
+      }
+    },
+    "/custom-domains": {
+      "post": {
+        "summary": "Add a custom domain to a server",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["domain", "serverId"], "properties": { "domain": { "type": "string" }, "serverId": { "type": "string" } } } } }
+        },
+        "responses": { "200": { "description": "Domain added", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomDomain" } } } } }
+      }
+    },
+    "/custom-domains/{id}": {
+      "delete": {
+        "summary": "Remove a custom domain",
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } } ],
+        "responses": { "204": { "description": "Domain removed" }, "404": { "description": "Domain not found" } }
+      }
+    },
+    "/logs": {
+      "get": {
+        "summary": "Get system logs",
+        "responses": { "200": { "description": "Logs array", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/LogEntry" } } } } } }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "security": [],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } } } } } }
+      }
+    }
+  }
+}
