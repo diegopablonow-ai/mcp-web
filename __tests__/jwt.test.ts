@@ -164,14 +164,14 @@ describe("verifyJwt", () => {
 
   it("throws in non-development when JWT_SECRET is missing", async () => {
     delete process.env.JWT_SECRET
-    process.env.NODE_ENV = "production"
+    process.env = { ...process.env, NODE_ENV: "production" }
     const token = await signJwt({ sub: "u1", exp: futureExp() }, SECRET)
     await expect(verifyJwt(token)).rejects.toThrow("JWT_SECRET must be set")
   })
 
   it("warns and succeeds in development when JWT_SECRET is missing", async () => {
     delete process.env.JWT_SECRET
-    process.env.NODE_ENV = "development"
+    process.env = { ...process.env, NODE_ENV: "development" }
     const token = await signJwt({ sub: "u1", exp: futureExp() }, SECRET)
     const { valid } = await verifyJwt(token)
     expect(valid).toBe(true)

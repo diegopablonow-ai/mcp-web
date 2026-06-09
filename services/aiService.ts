@@ -23,6 +23,7 @@ import { mockJobs } from "@/lib/mock-data"
 const SSE_ROUTE = "/api/sse/ai-jobs"
 const POLL_INTERVAL_MS = 2500
 const SSE_RECONNECT_DELAY_MS = 3000
+const mockJobStore = mockJobs()
 
 export const aiService = {
   // POST /ai/jobs
@@ -42,7 +43,7 @@ export const aiService = {
           teamId,
           progress: 0,
         }
-        mockJobs.unshift(job)
+        mockJobStore.unshift(job)
         return delay(job)
       },
       USE_MOCK_FALLBACK,
@@ -53,7 +54,7 @@ export const aiService = {
   async list(): Promise<AIJob[]> {
     return withMock(
       () => apiFetch<AIJob[]>("/ai/jobs"),
-      () => delay([...mockJobs]),
+      () => delay([...mockJobStore]),
       USE_MOCK_FALLBACK,
     )
   },
@@ -63,7 +64,7 @@ export const aiService = {
     return withMock(
       () => apiFetch<AIJob>(`/ai/jobs/${jobId}`),
       () => {
-        const job = mockJobs.find((j) => j.jobId === jobId)
+        const job = mockJobStore.find((j) => j.jobId === jobId)
         if (!job) throw new Error("Job not found")
         return delay(job)
       },
@@ -190,7 +191,7 @@ function subscribeMock(onUpdate: (jobs: AIJob[]) => void): () => void {
 
   const tick = () => {
     if (!active) return
-    for (const job of mockJobs) {
+    for (const job of mockJobStore) {
       if (job.status === "queued") {
         job.status = "running"
         job.progress = 5
@@ -204,7 +205,7 @@ function subscribeMock(onUpdate: (jobs: AIJob[]) => void): () => void {
         }
       }
     }
-    onUpdate([...mockJobs])
+    onUpdate([...mockJobStore])
   }
 
   const interval = setInterval(tick, 2000)

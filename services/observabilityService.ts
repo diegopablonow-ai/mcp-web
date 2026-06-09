@@ -22,13 +22,14 @@ import { mockLogs } from "@/lib/mock-data"
 
 const SSE_ROUTE = "/api/sse/logs"
 const SSE_RECONNECT_DELAY_MS = 3000
+const mockLogStore = mockLogs()
 
 export const observabilityService = {
   // GET /logs
   async getLogs(): Promise<LogEntry[]> {
     return withMock(
       () => apiFetch<LogEntry[]>("/logs"),
-      () => delay(mockLogs),
+      () => delay(mockLogStore),
       USE_MOCK_FALLBACK,
     )
   },
