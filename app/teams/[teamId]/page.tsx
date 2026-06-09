@@ -1,6 +1,19 @@
+import { Suspense } from "react"
 import { TeamDetailView } from "@/components/team-detail-view"
 
-export default async function TeamPage({
+export default function TeamPage({
+  params,
+}: {
+  params: Promise<{ teamId: string }>
+}) {
+  return (
+    <Suspense fallback={null}>
+      <TeamContent params={params} />
+    </Suspense>
+  )
+}
+
+async function TeamContent({
   params,
 }: {
   params: Promise<{ teamId: string }>
