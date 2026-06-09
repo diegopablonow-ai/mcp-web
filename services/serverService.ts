@@ -1,4 +1,3 @@
-import { cacheTag } from "next/cache"
 import { apiFetch, withMock, delay } from "./api"
 import { USE_MOCK_FALLBACK } from "@/lib/constants"
 import type { Server, CustomDomain, ServerStatus } from "@/lib/types"
@@ -21,20 +20,14 @@ import { mockServers, mockDomains } from "@/lib/mock-data"
  * across navigations. Invalidate with revalidateTag("servers", "max") after any
  * deploy, status change, or domain mutation.
  */
-export async function fetchServers(): Promise<Server[]> {
-  "use cache"
-  cacheTag("servers")
-  return withMock(
-    () => apiFetch<Server[]>("/servers"),
-    () => delay(mockServers),
-    USE_MOCK_FALLBACK,
-  )
-}
-
 export const serverService = {
   // GET /servers — delegates to the cached server function.
   async list(): Promise<Server[]> {
-    return fetchServers()
+    return withMock(
+      () => apiFetch<Server[]>("/servers"),
+      () => delay(mockServers),
+      USE_MOCK_FALLBACK,
+    )
   },
 
   // GET /servers/{serverId}

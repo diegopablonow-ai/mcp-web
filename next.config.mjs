@@ -4,9 +4,10 @@ import { withSentryConfig } from "@sentry/nextjs"
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // -------------------------------------------------------------------------
-  // React Compiler (Next.js 16 + React 19)
+  // React Compiler requires babel-plugin-react-compiler to be installed.
+  // Keep it disabled until the dependency is added intentionally.
   // -------------------------------------------------------------------------
-  reactCompiler: true,
+  reactCompiler: false,
 
   // -------------------------------------------------------------------------
   // Turbopack

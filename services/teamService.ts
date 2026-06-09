@@ -1,4 +1,3 @@
-import { cacheTag } from "next/cache"
 import { apiFetch, withMock, delay } from "./api"
 import { USE_MOCK_FALLBACK } from "@/lib/constants"
 import type { Team, Role } from "@/lib/types"
@@ -15,20 +14,14 @@ import { mockTeams } from "@/lib/mock-data"
  * (member add/remove, team creation). The "max" cacheLife profile enables
  * stale-while-revalidate so the old value is served while the cache warms.
  */
-export async function fetchTeams(): Promise<Team[]> {
-  "use cache"
-  cacheTag("teams")
-  return withMock(
-    () => apiFetch<Team[]>("/teams"),
-    () => delay(mockTeams),
-    USE_MOCK_FALLBACK,
-  )
-}
-
 export const teamService = {
   // GET /teams — delegates to the cached server function.
   async list(): Promise<Team[]> {
-    return fetchTeams()
+    return withMock(
+      () => apiFetch<Team[]>("/teams"),
+      () => delay(mockTeams),
+      USE_MOCK_FALLBACK,
+    )
   },
 
   // GET /teams/{teamId}

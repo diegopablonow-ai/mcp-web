@@ -3,7 +3,7 @@
 // Next.js cache across navigations and revalidated when
 // revalidateTag("servers", "max") is called (e.g. after a deploy or status
 // change mutation in an action or API route).
-import { fetchServers } from "@/services/serverService"
+import { fetchServers } from "@/services/serverServer"
 import { ServersView } from "@/components/servers-view"
 
 export default async function ServersPage() {
