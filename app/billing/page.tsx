@@ -4,8 +4,10 @@
 // webhook handler after a subscription change).
 import { fetchSubscription } from "@/services/billingServer"
 import { BillingView } from "@/components/billing-view"
+import { connection } from "next/server"
 
 export default async function BillingPage() {
+  await connection()
   const initialBilling = await fetchSubscription()
   return <BillingView initialBilling={initialBilling} />
 }
